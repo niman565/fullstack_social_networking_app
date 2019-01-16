@@ -94,14 +94,135 @@ router.delete(
 // @desc Like post
 // @access Private
 router.post(
-  "like/:id",
+  "/like/:id",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
     Profile.findOne({ user: req.user.id }).then(profile => {
       Post.findById(req.params.id)
-        .then(post => {})
+        .then(post => {
+          //if post.likes, which is an array, is filtered to the user id's that match the current, if there are any, return an error
+          if (
+            post.likes.filter(like => like.user.toString() === req.user.id)
+              .length > 0
+          ) {
+            return res
+              .status(400)
+              .json({ alreadyLiked: "User already liked this post" });
+          }
+
+          //Add user id to likes array if it isn't already inside it
+          post.likes.unshift({ user: req.user.id });
+
+          //save the modified post in the database
+          post.save().then(post => res.json(post));
+        })
         .catch(err => res.status(404).json({ postnotfound: "No post found" }));
     });
+  }
+);
+
+// @route POST api/posts/unlike/:id
+// @desc Like post
+// @access Private
+router.post(
+  "/unlike/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    Profile.findOne({ user: req.user.id }).then(profile => {
+      Post.findById(req.params.id)
+        .then(post => {
+          //if post.likes, which is an array, is filtered to the user id's that match the current, if there are any, return an error
+          if (
+            post.likes.filter(like => like.user.toString() === req.user.id)
+              .length === 0
+          ) {
+            return res
+              .status(400)
+              .json({ notliked: "you have not liked this post yet" });
+          }
+
+          //get the index of the id in the likes array
+          var removeIndex = post.likes
+            .map(item => item.id.toString())
+            .indexOf(req.user.id);
+
+          //remove element from the likes array
+          post.likes.splice(removeIndex, 1);
+
+          //save the modified post in the database
+          post.save().then(post => res.json(post));
+        })
+        .catch(err => res.status(404).json({ postnotfound: "No post found" }));
+    });
+  }
+);
+
+// @route POST api/posts/comment/:id
+// @desc comment on a post
+// @access Private
+router.post(
+  "/comment/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    const { errors, isValid } = validatePostInput(req.body);
+
+    //check validation
+    if (!isValid) {
+      // If any errors, send 400 with errors object
+      return res.status(400).json(errors);
+    }
+
+    Post.findById(req.params.id)
+      .then(post => {
+        const newComment = {
+          text: req.body.text,
+          name: req.body.name,
+          avatar: req.body.avatar,
+          user: req.user.id
+        };
+
+        //add the comment to the "comments" array
+        post.comments.unshift(newComment);
+
+        //save to database
+        post.save().then(post => res.json(post));
+      })
+      .catch(err => res.status(404).json({ postnotfound: "no post found" }));
+  }
+);
+
+// @route POST api/posts/comment/:id/:comment_id
+// @desc Delete comment on a post
+// @access Private
+router.delete(
+  "/comment/:id/:comment_id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    Post.findById(req.params.id)
+      .then(post => {
+        // Check to see if comment exists
+        if (
+          post.comments.filter(
+            comment => comment._id.toString() === req.params.comment_id
+          ).length === 0
+        ) {
+          return res
+            .status(404)
+            .json({ commentnotexists: "comment does not exist" });
+        }
+
+        // Get remove index
+        const removeIndex = post.comments
+          .map(item => item._id.toString())
+          .indexOf(req.params.comment_id);
+
+        // Remove element
+        post.comments.splice(removeIndex, 1);
+
+        // Save post to db
+        post.save().then(post => res.json(post));
+      })
+      .catch(err => res.status(404).json({ postnotfound: "no post found" }));
   }
 );
 
