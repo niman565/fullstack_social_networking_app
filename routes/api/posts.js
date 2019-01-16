@@ -202,6 +202,7 @@ router.delete(
       .then(post => {
         // Check to see if comment exists
         if (
+          //filter the array to only the matching elements
           post.comments.filter(
             comment => comment._id.toString() === req.params.comment_id
           ).length === 0
