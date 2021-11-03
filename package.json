@@ -22,7 +22,7 @@
     "nodemon": "^1.18.3",
     "passport": "^0.4.0",
     "passport-jwt": "^4.0.0",
-    "validator": "^10.6.0"
+    "validator": "^13.7.0"
   },
   "dependencies": {
     "concurrently": "^4.1.0"
